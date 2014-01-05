@@ -12,14 +12,93 @@ public class DH {
 
 	int bitLength=512;	
 	int certainty=20;// probabilistic prime generator 1-2^-certainty => practically 'almost sure'
+
+    private static final Random rnd = new Random();
 	
-   // {
+	public static void main(String [] args) throws Exception
+	{
+		new DH();
+	}
+
+	public DH() throws Exception{
+	    Random randomGenerator = new Random();
+	    BigInteger generatorValue,primeValue,publicA,publicB,secretA,secretB,sharedKeyA,sharedKeyB;
+
+	    primeValue = findPrime();// BigInteger.valueOf((long)g);
+	    System.out.println("the prime is "+primeValue);
+	     generatorValue	= findPrimeRoot(primeValue);//BigInteger.valueOf((long)p);
+	    System.out.println("the generator of the prime is "+generatorValue);
+
+		// on machine 1
+	    secretA = new BigInteger(bitLength-2,randomGenerator);
+		// on machine 2
+	    secretB = new BigInteger(bitLength-2,randomGenerator);
+
+		// to be published:
+	    publicA=generatorValue.modPow(secretA, primeValue);
+	    publicB=generatorValue.modPow(secretB, primeValue);
+	    sharedKeyA = publicB.modPow(secretA,primeValue);// should always be same as:
+	    sharedKeyB = publicA.modPow(secretB,primeValue);
+
+	    System.out.println("the public key of A is "+publicA);
+	    System.out.println("the public key of B is "+publicB);
+	    System.out.println("the shared key for A is "+sharedKeyA);
+	    System.out.println("the shared key for B is "+sharedKeyB);
+	    System.out.println("The secret key for A is "+secretA);
+	    System.out.println("The secret key for B is "+secretB);
+
+	    String getAValue=sharedKeyA.toString();
+	    String getBValue=sharedKeyB.toString();
+
+	    MessageDigest md = MessageDigest.getInstance("SHA-256");
+	    md.update(getAValue.getBytes());
+
+	    byte byteData[] = md.digest();
+	    StringBuffer sb = new StringBuffer();
+
+	    for(int i=0;i<byteData.length;i++)
+	    {
+	        sb.append(Integer.toString((byteData[i] & 0xff) + 0x100, 16).substring(1));// ??
+	    }
+
+	    String getHexValue = sb.toString();
+	    System.out.println("hex format in SHA-256 is "+getHexValue);
+
+	    byte [] key = getAValue.getBytes("UTF-8");
+
+	    MessageDigest sha = MessageDigest.getInstance("SHA-256");
+	    key =  sha.digest(key);
+	    key = Arrays.copyOf(key, 16);
+	    SecretKeySpec secretKeySpec =  new SecretKeySpec(key,"AES");
+
+	    Cipher cipher = Cipher.getInstance("AES");
+	    cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec);
+
+	    CipherInputStream cipt = new CipherInputStream(new FileInputStream(new File("test.jpg")),cipher); // enter your filename here
+	    FileOutputStream fop=new FileOutputStream(new File("testEncrypt.jpg"));
+
+	    int i;
+	       while((i=cipt.read())!= -1)
+	           fop.write(i);
+
+	       cipher.init(Cipher.DECRYPT_MODE,secretKeySpec);
+
+	    CipherInputStream cipt2 = new CipherInputStream(new FileInputStream(new File("testEncrypt.jpg")),cipher); // encryption of image
+	    FileOutputStream fop2 = new FileOutputStream(new File("testDecrypt.jpg"));//decryption of images
+
+	    int j;
+	    while((j=cipt2.read())!=-1)
+	        fop2.write(j);
+
+	}
+
+
+   //    {
    //       System.load("/opt/local/lib/libcrypto.1.0.0.dylib");
    //    }
    // private native BigInteger BN_generate_prime(BigInteger r,int bits);
    // private native int BN_is_prime_fasttest_ex(BigInteger r,int nchecks);
 
-    private static final Random rnd = new Random();
 
 	private static boolean miller_rabin_pass(BigInteger a, BigInteger n) {
 	    BigInteger n_minus_one = n.subtract(BigInteger.ONE);
@@ -171,82 +250,5 @@ BigInteger findPrime(){
 // 	return 0;
 // }
 
-
-public static void main(String [] args) throws Exception
-{
-	new DH();
-}
-
-public DH() throws Exception{
-    Random randomGenerator = new Random();
-    BigInteger generatorValue,primeValue,publicA,publicB,secretA,secretB,sharedKeyA,sharedKeyB;
-
-    primeValue = findPrime();// BigInteger.valueOf((long)g);
-    System.out.println("the prime is "+primeValue);
-     generatorValue	= findPrimeRoot(primeValue);//BigInteger.valueOf((long)p);
-    System.out.println("the generator of the prime is "+generatorValue);
-
-	// on machine 1
-    secretA = new BigInteger(bitLength-2,randomGenerator);
-	// on machine 2
-    secretB = new BigInteger(bitLength-2,randomGenerator);
-
-	// to be published:
-    publicA=generatorValue.modPow(secretA, primeValue);
-    publicB=generatorValue.modPow(secretB, primeValue);
-    sharedKeyA = publicB.modPow(secretA,primeValue);// should always be same as:
-    sharedKeyB = publicA.modPow(secretB,primeValue);
-
-    System.out.println("the public key of A is "+publicA);
-    System.out.println("the public key of B is "+publicB);
-    System.out.println("the shared key for A is "+sharedKeyA);
-    System.out.println("the shared key for B is "+sharedKeyB);
-    System.out.println("The secret key for A is "+secretA);
-    System.out.println("The secret key for B is "+secretB);
-
-    String getAValue=sharedKeyA.toString();
-    String getBValue=sharedKeyB.toString();
-
-    MessageDigest md = MessageDigest.getInstance("SHA-256");
-    md.update(getAValue.getBytes());
-
-    byte byteData[] = md.digest();
-    StringBuffer sb = new StringBuffer();
-
-    for(int i=0;i<byteData.length;i++)
-    {
-        sb.append(Integer.toString((byteData[i] & 0xff) + 0x100, 16).substring(1));// ??
-    }
-
-    String getHexValue = sb.toString();
-    System.out.println("hex format in SHA-256 is "+getHexValue);
-
-    byte [] key = getAValue.getBytes("UTF-8");
-
-    MessageDigest sha = MessageDigest.getInstance("SHA-256");
-    key =  sha.digest(key);
-    key = Arrays.copyOf(key, 16);
-    SecretKeySpec secretKeySpec =  new SecretKeySpec(key,"AES");
-
-    Cipher cipher = Cipher.getInstance("AES");
-    cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec);
-
-    CipherInputStream cipt = new CipherInputStream(new FileInputStream(new File("test.jpg")),cipher); // enter your filename here
-    FileOutputStream fop=new FileOutputStream(new File("testEncrypt.jpg"));
-
-    int i;
-       while((i=cipt.read())!= -1)
-           fop.write(i);
-
-       cipher.init(Cipher.DECRYPT_MODE,secretKeySpec);
-   
-    CipherInputStream cipt2 = new CipherInputStream(new FileInputStream(new File("testEncrypt.jpg")),cipher); // encryption of image
-    FileOutputStream fop2 = new FileOutputStream(new File("testDecrypt.jpg"));//decryption of images
-
-    int j;
-    while((j=cipt2.read())!=-1)
-        fop2.write(j);
-
-}
 
 }
