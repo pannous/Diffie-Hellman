@@ -1,7 +1,8 @@
 // javac DH.java && java DH
+// "Just use libsodium if you can," also applies for every other language below
 import java.math.*;
 import java.util.*;
-import java.security.MessageDigest;
+import java.security.*;
 import javax.crypto.*;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.*;
@@ -13,8 +14,12 @@ public class DH {
 	int bitLength=512;	
 	int certainty=20;// probabilistic prime generator 1-2^-certainty => practically 'almost sure'
 
-    private static final Random rnd = new Random();
-	
+    private static final SecureRandom rnd = new SecureRandom();
+// byte[] randomBytes = new byte[32];
+// csprng.nextBytes(randombytes);
+// Important: Despite its name, don't use SecureRandom.getInstanceStrong()!
+// On Linux, this is the equivalent to reading /dev/random which is a pointless performance killer. The default for new SecureRandom() in Java 8 is to read from /dev/urandom, which is what you want
+
 	public static void main(String [] args) throws Exception
 	{
 		new DH();
@@ -205,6 +210,7 @@ void compareWolfram(BigInteger p){
 
 BigInteger findPrimeRoot(BigInteger p){
 	int start= 2001;// first best probably precalculated by NSA?
+	// preferably  3, 17 and 65537
 	if(start==2)compareWolfram(p);
 
 	for(int i=start;i<100000000;i++)
